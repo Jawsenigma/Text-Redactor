@@ -6,5 +6,4 @@ pytest = "*"
 
 [dev-packages]
 
-[scripts]
-install_models = "python -m spacy download en_core_web_sm"
+
