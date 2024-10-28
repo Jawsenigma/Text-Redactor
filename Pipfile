@@ -1,1 +1,5 @@
- 
+[packages]
+transformers = "*"
+torch = "*"
+
+[dev-packages]
