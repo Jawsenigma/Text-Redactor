@@ -4,7 +4,14 @@ import spacy
 from spacy.matcher import Matcher
 
 # Load the spaCy model
-nlp = spacy.load("en_core_web_sm")
+# nlp = spacy.load("en_core_web_sm")
+from spacy.cli import download
+
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    download("en_core_web_sm") 
+    nlp = spacy.load("en_core_web_sm")  
 
 def email_redactor(text):
     doc = nlp(text)
