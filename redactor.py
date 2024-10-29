@@ -2,17 +2,17 @@ import os
 import argparse
 import spacy
 from spacy.matcher import Matcher
-
-# Load the spaCy model
-# nlp = spacy.load("en_core_web_sm")
 from spacy.cli import download
+import sys
 
+# Load or download SpaCy model
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
     download("en_core_web_sm") 
     nlp = spacy.load("en_core_web_sm")  
 
+# Redactor functions
 def email_redactor(text):
     doc = nlp(text)
     redacted_text = []
@@ -23,49 +23,29 @@ def email_redactor(text):
             redacted_text.append(token.text)
     return ' '.join(redacted_text)
 
-
-import spacy
-
-# Load SpaCy's pre-trained NER model
-nlp = spacy.load("en_core_web_sm")
-
 def date_redactor(text):
-    doc = nlp(text)  # Process the text with SpaCy
-    redacted_text = text  # Start with the original text
-
-    # Collect all dates for redaction
+    doc = nlp(text)
+    redacted_text = text
     dates_to_redact = [ent.text for ent in doc.ents if ent.label_ == "DATE"]
-
-    # Replace each date in the text with the redaction placeholder
     for date in dates_to_redact:
         redacted_text = redacted_text.replace(date, "██████")
-
     return redacted_text
 
-
-
-
-
 def phone_redactor(text):
-    # Use a Matcher to identify phone number patterns
     matcher = Matcher(nlp.vocab)
     phone_patterns = [
         [{"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "dddd"}],
-        [{"SHAPE": "ddd"}, {"SHAPE": "dddd"}],  # Matches like 1234567
-        [{"SHAPE": "dd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "dddd"}],  # Matches like 12-3456-7890
+        [{"SHAPE": "ddd"}, {"SHAPE": "dddd"}],
+        [{"SHAPE": "dd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "dddd"}],
     ]
-
     for pattern in phone_patterns:
         matcher.add("PHONE_NUMBER", [pattern])
-
     doc = nlp(text)
     matches = matcher(doc)
     redacted_text = text
-
     for match_id, start, end in matches:
         span = doc[start:end]
         redacted_text = redacted_text.replace(span.text, '█' * len(span.text))
-
     return redacted_text
 
 def concept_redactor(text, concepts):
@@ -100,24 +80,19 @@ def name_redactor(text):
     return ' '.join(redacted_text)
 
 def address_redactor(text):
-    # Create a simple Matcher for addresses
     matcher = Matcher(nlp.vocab)
     address_patterns = [
         [{"LIKE_NUM": True}, {"LOWER": {"IN": ["street", "st", "avenue", "ave", "road", "rd", "boulevard", "blvd", "drive", "dr", "court", "ct", "lane", "ln", "way", "wy"]}}],
-        [{"LOWER": {"IN": ["street", "st", "avenue", "ave", "road", "rd", "boulevard", "blvd"]}}, {"LIKE_NUM": True}],  # Matches like Street 123
+        [{"LOWER": {"IN": ["street", "st", "avenue", "ave", "road", "rd", "boulevard", "blvd"]}}, {"LIKE_NUM": True}],
     ]
-
     for pattern in address_patterns:
         matcher.add("ADDRESS", [pattern])
-
     doc = nlp(text)
     matches = matcher(doc)
     redacted_text = text
-
     for match_id, start, end in matches:
         span = doc[start:end]
         redacted_text = redacted_text.replace(span.text, '█' * len(span.text))
-
     return redacted_text
 
 def redact_text(text, flags, concepts):
@@ -137,11 +112,22 @@ def redact_text(text, flags, concepts):
         text = email_redactor(text)
     return text
 
-def write_output(redacted_text, output_path, stats_type, original_text):
+def write_output(redacted_text, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(redacted_text)
     print(f"Redacted file saved to: {output_path}")
+
+def write_stats(stats, stats_type):
+    stats_output = "\n".join(f"{key}: {value}" for key, value in stats.items())
+    if stats_type == "stdout":
+        print(stats_output)
+    elif stats_type == "stderr":
+        print(stats_output, file=sys.stderr)
+    else:
+        with open(stats_type, 'w') as f:
+            f.write(stats_output)
+        print(f"Statistics written to {stats_type}")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Text Redaction Tool")
@@ -155,7 +141,6 @@ def parse_arguments():
     parser.add_argument('--concepts', nargs='+', help="List of concepts to redact")
     parser.add_argument('--addresses', action='store_true', help="Redact addresses")
     parser.add_argument('--emails', action='store_true', help='Redact email addresses')
-
     return parser.parse_args()
 
 def main():
@@ -170,19 +155,29 @@ def main():
         'emails': args.emails,
     }
     
+    stats = {"files_processed": 0, "files_redacted": 0, "errors": 0}
+
     if os.path.isdir(args.input_path):
         files = [os.path.join(args.input_path, f) for f in os.listdir(args.input_path) if f.endswith('.txt')]
     else:
         files = [args.input_path]
     
     for file_path in files:
-        with open(file_path, 'r') as f:
-            original_text = f.read()
+        try:
+            with open(file_path, 'r') as f:
+                original_text = f.read()
+            stats["files_processed"] += 1
+        except Exception as e:
+            print(f"Error reading file {file_path}: {e}")
+            stats["errors"] += 1
+            continue
         
         redacted_text = redact_text(original_text, flags, args.concepts)
-        output_path = os.path.join(args.output, os.path.basename(file_path).replace('.txt', '.redacted.txt'))
-        
-        write_output(redacted_text, output_path, args.stats, original_text)
+        output_path = os.path.join(args.output, os.path.basename(file_path).replace('.txt', '.censored'))
+        write_output(redacted_text, output_path)
+        stats["files_redacted"] += 1
+
+    write_stats(stats, args.stats)
 
 if __name__ == "__main__":
     main()
