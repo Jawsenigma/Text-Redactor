@@ -5,6 +5,6 @@ spacy = "*"
 pytest = "*"
 commonregex = "*"
 nltk = "*"
+commonregex-improved = "*"
 
 [dev-packages]
-
