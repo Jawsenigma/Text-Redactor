@@ -12,7 +12,7 @@ The **Redactor** project is a Python package designed to redact sensitive inform
 - **Date Redaction**: Redacts dates in multiple formats.
 - **Phone Number Redaction**: Removes phone numbers in various formats.
 - **Name Redaction**: Detects and redacts personal names.
-- **Address Redaction**: (Optional) Redacts physical addresses.
+- **Address Redaction**: Redacts physical addresses.
 - **Gendered Pronoun Redaction**: Obfuscates gender-specific terms.
 - **Concept Redaction**: Allows users to define custom words or phrases to redact.
 
