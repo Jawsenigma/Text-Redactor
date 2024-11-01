@@ -1,1 +1,13 @@
- 
+1. **spaCy** | https://spacy.io/usage | Helped with Named Entity Recognition (NER) for detecting names, emails, and gendered pronouns.
+   
+2. **CommonRegex** | https://github.com/crim-ca/commonregex | Provided regex patterns for identifying dates and phone numbers.
+
+3. **re (Regex)** | https://docs.python.org/3/library/re.html | Used for pattern matching to redact phone numbers, emails, and addresses.
+
+4. **NLTK (WordNet)** | https://www.nltk.org/howto/wordnet.html | Assisted in finding synonyms for concept redaction using WordNet.
+
+5. **argparse** | https://docs.python.org/3/library/argparse.html | Used to handle command-line arguments for specifying redaction options.
+
+6. **os** | https://docs.python.org/3/library/os.html | Managed file operations like reading/writing files and creating directories.
+
+7. **sys** | https://docs.python.org/3/library/sys.html | Used for handling system-level tasks like error messages and output redirection.

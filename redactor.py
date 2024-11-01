@@ -4,15 +4,17 @@ import spacy
 from spacy.matcher import Matcher
 from spacy.cli import download
 import sys
+import re
+import crim as CommonRegex
 
-# Load or download SpaCy model
+
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
     download("en_core_web_sm") 
     nlp = spacy.load("en_core_web_sm")  
 
-# Redactor functions
+
 def email_redactor(text):
     doc = nlp(text)
     redacted_text = []
@@ -23,77 +25,142 @@ def email_redactor(text):
             redacted_text.append(token.text)
     return ' '.join(redacted_text)
 
+
 def date_redactor(text):
-    doc = nlp(text)
-    redacted_text = text
-    dates_to_redact = [ent.text for ent in doc.ents if ent.label_ == "DATE"]
-    for date in dates_to_redact:
-        redacted_text = redacted_text.replace(date, "██████")
-    return redacted_text
+    date_list = CommonRegex.dates(text)
+    
+    for date in date_list:
+        redaction = "█" * len(date)  
+        text = text.replace(date, redaction)
+    
+    return text
+
+
 
 def phone_redactor(text):
-    matcher = Matcher(nlp.vocab)
-    phone_patterns = [
-        [{"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "dddd"}],
-        [{"SHAPE": "ddd"}, {"SHAPE": "dddd"}],
-        [{"SHAPE": "dd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "ddd"}, {"IS_PUNCT": True, "OP": "?"}, {"SHAPE": "dddd"}],
-    ]
-    for pattern in phone_patterns:
-        matcher.add("PHONE_NUMBER", [pattern])
-    doc = nlp(text)
-    matches = matcher(doc)
-    redacted_text = text
-    for match_id, start, end in matches:
-        span = doc[start:end]
-        redacted_text = redacted_text.replace(span.text, '█' * len(span.text))
+    phone_pattern = re.compile(r'''
+        (\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}) |
+        (\+?\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{3,4}[-.\s]?\d{4})
+    ''', re.VERBOSE)
+
+    redacted_text = re.sub(phone_pattern, lambda x: '█' * len(x.group()), text)
+    
     return redacted_text
 
-def concept_redactor(text, concepts):
-    doc = nlp(text)
-    redacted_text = []
-    for sentence in doc.sents:
-        if any(concept.lower() in sentence.text.lower() for concept in concepts):
-            redacted_text.append('█' * len(sentence.text))
-        else:
-            redacted_text.append(sentence.text)
-    return ' '.join(redacted_text)
+
+
+import nltk
+from nltk.corpus import wordnet as wn
+
+nltk.download("wordnet", quiet=True)
+nltk.download("punkt", quiet=True)
+
+
+def concept_redactor(data, concept):
+    if not isinstance(concept, str) or len(concept.split()) > 1:
+        raise ValueError("Concept must be a single word as a string.")
+    
+    concept_list = set()
+    syns = wn.synsets(concept)
+    for syn in syns:
+        for lemma in syn.lemma_names():
+            concept_list.add(lemma.lower())
+    
+    concept_list.add(concept.lower())
+
+    sentences = [sentence.strip() for sentence in data.replace('\n', '. ').split('.') if sentence.strip()]
+    block = '█' 
+
+    redacted_data = data
+
+    for sentence in sentences:
+        if any(synonym in sentence.lower() for synonym in concept_list):
+            redacted_sentence = block * len(sentence)
+            redacted_data = redacted_data.replace(sentence, redacted_sentence)
+
+    return redacted_data
+
+
 
 def gender_redactor(text):
-    gender_terms = ['he', 'she', 'him', 'her', 'his', 'hers']
+    gender_terms = [
+        'he', 'she', 'him', 'her', 'his', 'hers', 'them', 'their', 'theirs',
+        'man', 'woman', 'boy', 'girl', 'father', 'mother',
+        'brother', 'sister', 'husband', 'wife', 
+        'male', 'female', 'masculine', 'feminine',
+        'non-binary', 'genderqueer', 'genderfluid',
+        'ze', 'zir', 'xe', 'xem',
+        'mr.', 'mrs.', 'ms.', 'miss'
+    ]
     doc = nlp(text)
     redacted_text = []
+    
     for token in doc:
         if token.text.lower() in gender_terms:
             redacted_text.append('█' * len(token.text))
         else:
             redacted_text.append(token.text)
+    
     return ' '.join(redacted_text)
+
+
+
+import spacy
+import re
+from spacy.cli import download
+
+try:
+    nlp = spacy.load('en_core_web_trf')
+except OSError:
+    download('en_core_web_trf')
+    nlp = spacy.load('en_core_web_trf')
 
 def name_redactor(text):
+    email_pattern = r'(\S+)@(\S+\.\S+)'
     doc = nlp(text)
     redacted_text = []
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            redacted_text.append('█' * len(ent.text))
-        else:
-            redacted_text.append(ent.text)
-    return ' '.join(redacted_text)
+    previous_end = 0
 
-def address_redactor(text):
-    matcher = Matcher(nlp.vocab)
-    address_patterns = [
-        [{"LIKE_NUM": True}, {"LOWER": {"IN": ["street", "st", "avenue", "ave", "road", "rd", "boulevard", "blvd", "drive", "dr", "court", "ct", "lane", "ln", "way", "wy"]}}],
-        [{"LOWER": {"IN": ["street", "st", "avenue", "ave", "road", "rd", "boulevard", "blvd"]}}, {"LIKE_NUM": True}],
-    ]
-    for pattern in address_patterns:
-        matcher.add("ADDRESS", [pattern])
-    doc = nlp(text)
-    matches = matcher(doc)
-    redacted_text = text
-    for match_id, start, end in matches:
-        span = doc[start:end]
-        redacted_text = redacted_text.replace(span.text, '█' * len(span.text))
-    return redacted_text
+    for token in doc:
+        start, end = token.idx, token.idx + len(token.text)
+
+        redacted_text.append(text[previous_end:start])
+
+        if token.ent_type_ == 'PERSON':
+            redacted_text.append('█' * len(token.text))
+        elif re.match(email_pattern, token.text):
+            email_parts = re.match(email_pattern, token.text)
+            local_part = email_parts.group(1)
+            domain_part = email_parts.group(2)
+            if any(name.text.lower() in local_part.lower() for name in doc.ents if name.label_ == 'PERSON'):
+                redacted_email = '█' * len(local_part) + '@' + domain_part
+                redacted_text.append(redacted_email)
+            else:
+                redacted_text.append(token.text)
+        else:
+            redacted_text.append(token.text)
+
+        previous_end = end
+
+    redacted_text.append(text[previous_end:])
+
+    return ''.join(redacted_text).replace('\n', '\n')
+
+
+
+
+import os
+import argparse
+
+import re
+def address_redactor(data):
+    pattern = re.compile(r'\b\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Lane|Ln|Drive|Dr|Court|Ct|Circle|Cir|Way|Wy|Parkway|Pkwy)\b', re.IGNORECASE)
+
+    redacted_data = pattern.sub(lambda match: '█' * len(match.group()), data)
+
+    return redacted_data
+
+
 
 def redact_text(text, flags, concepts):
     if flags['dates']:
@@ -105,12 +172,17 @@ def redact_text(text, flags, concepts):
     if flags['names']:
         text = name_redactor(text)
     if flags['concepts'] and concepts:
-        text = concept_redactor(text, concepts)
+        for concept in concepts:
+            text = concept_redactor(text, concept)  
     if flags['addresses']:
         text = address_redactor(text)
     if flags['emails']:
         text = email_redactor(text)
     return text
+
+
+import os
+import sys
 
 def write_output(redacted_text, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -119,14 +191,27 @@ def write_output(redacted_text, output_path):
     print(f"Redacted file saved to: {output_path}")
 
 def write_stats(stats, stats_type):
-    stats_output = "\n".join(f"{key}: {value}" for key, value in stats.items())
+    stats_output = []
+    
+    stats_output.append(f"Files Processed: {stats['files_processed']}")
+    stats_output.append(f"Files Redacted: {stats['files_redacted']}")
+    stats_output.append(f"Errors: {stats['errors']}\n")
+    
+    for category, details in stats.items():
+        if category not in ['files_processed', 'files_redacted', 'errors']:
+            stats_output.append(f"{category.capitalize()} - Count: {details['count']}")
+            for position in details.get('positions', []):
+                stats_output.append(f"  Position: Start {position[0]}, End {position[1]}")
+    
+    formatted_stats = "\n".join(stats_output)
+    
     if stats_type == "stdout":
-        print(stats_output)
+        print(formatted_stats)
     elif stats_type == "stderr":
-        print(stats_output, file=sys.stderr)
+        print(formatted_stats, file=sys.stderr)
     else:
         with open(stats_type, 'w') as f:
-            f.write(stats_output)
+            f.write(formatted_stats)
         print(f"Statistics written to {stats_type}")
 
 def parse_arguments():

@@ -3,6 +3,8 @@ transformers = "*"
 torch = "*"
 spacy = "*"
 pytest = "*"
+commonregex = "*"
+nltk = "*"
 
 [dev-packages]
 
