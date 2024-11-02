@@ -105,30 +105,20 @@ def gender_redactor(text):
 
 
 
-import spacy
-import re
-from spacy.cli import download
-
-try:
-    nlp = spacy.load('en_core_web_trf')
-except OSError:
-    download('en_core_web_trf')
-    nlp = spacy.load('en_core_web_trf')
 
 def name_redactor(text):
-    email_pattern = r'(\S+)@(\S+\.\S+)'
+    email_pattern = r'(\S+)@(\S+\.\S+)'  
     doc = nlp(text)
     redacted_text = []
     previous_end = 0
 
     for token in doc:
         start, end = token.idx, token.idx + len(token.text)
-
         redacted_text.append(text[previous_end:start])
 
-        if token.ent_type_ == 'PERSON':
+        if token.ent_type_ == 'PERSON':  
             redacted_text.append('█' * len(token.text))
-        elif re.match(email_pattern, token.text):
+        elif re.match(email_pattern, token.text):  
             email_parts = re.match(email_pattern, token.text)
             local_part = email_parts.group(1)
             domain_part = email_parts.group(2)
@@ -143,8 +133,8 @@ def name_redactor(text):
         previous_end = end
 
     redacted_text.append(text[previous_end:])
-
     return ''.join(redacted_text).replace('\n', '\n')
+
 
 
 
