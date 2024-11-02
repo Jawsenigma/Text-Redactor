@@ -6,7 +6,11 @@ from spacy.cli import download
 import sys
 import re
 import crim as CommonRegex
+import nltk
+from nltk.corpus import wordnet as wn
 
+nltk.download("wordnet", quiet=True)
+nltk.download("punkt", quiet=True)
 
 try:
     nlp = spacy.load("en_core_web_sm")
@@ -47,13 +51,6 @@ def phone_redactor(text):
     
     return redacted_text
 
-
-
-import nltk
-from nltk.corpus import wordnet as wn
-
-nltk.download("wordnet", quiet=True)
-nltk.download("punkt", quiet=True)
 
 
 def concept_redactor(data, concept):
@@ -105,44 +102,33 @@ def gender_redactor(text):
 
 
 
-
 def name_redactor(text):
-    email_pattern = r'(\S+)@(\S+\.\S+)'  
+    email_pattern = r'(\S+)@(\S+\.\S+)'
     doc = nlp(text)
     redacted_text = []
     previous_end = 0
 
-    for token in doc:
-        start, end = token.idx, token.idx + len(token.text)
+    for ent in doc.ents:
+        start, end = ent.start_char, ent.end_char
         redacted_text.append(text[previous_end:start])
 
-        if token.ent_type_ == 'PERSON':  
-            redacted_text.append('█' * len(token.text))
-        elif re.match(email_pattern, token.text):  
-            email_parts = re.match(email_pattern, token.text)
-            local_part = email_parts.group(1)
-            domain_part = email_parts.group(2)
-            if any(name.text.lower() in local_part.lower() for name in doc.ents if name.label_ == 'PERSON'):
-                redacted_email = '█' * len(local_part) + '@' + domain_part
-                redacted_text.append(redacted_email)
-            else:
-                redacted_text.append(token.text)
+        if ent.label_ == 'PERSON':
+            redacted_text.append('█' * (end - start))
         else:
-            redacted_text.append(token.text)
+            redacted_text.append(text[start:end])
 
         previous_end = end
 
     redacted_text.append(text[previous_end:])
-    return ''.join(redacted_text).replace('\n', '\n')
+
+    redacted_email_text = ''.join(redacted_text)
+    redacted_email_text = re.sub(email_pattern, lambda x: '█' * len(x.group(1)) + '@' + x.group(2), redacted_email_text)
+
+    return redacted_email_text
 
 
 
 
-
-import os
-import argparse
-
-import re
 def address_redactor(data):
     pattern = re.compile(r'\b\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Lane|Ln|Drive|Dr|Court|Ct|Circle|Cir|Way|Wy|Parkway|Pkwy)\b', re.IGNORECASE)
 
@@ -170,9 +156,6 @@ def redact_text(text, flags, concepts):
         text = email_redactor(text)
     return text
 
-
-import os
-import sys
 
 def write_output(redacted_text, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
