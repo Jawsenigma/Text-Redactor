@@ -39,13 +39,13 @@ from redactor import email_redactor, date_redactor, phone_redactor
 
 text = "Contact me at example@example.com on January 1, 2022. My phone is 123-456-7890."
 redacted_text = phone_redactor(date_redactor(email_redactor(text)))
-print(redacted_text)  # Outputs text with email, date, and phone number redacted
+print(redacted_text) 
 ```
 
 ### Command-Line Usage:
-To redact information from a text file via the command line:
+Given below is an example command to redact information from a text file via the command line:
 ```bash
-pipenv run python redactor.py --input <input_file> --output <output_dir> --emails --dates --phones
+pipenv run python redactor.py --input '*.txt' --names --dates --phones --address --concept 'kids' --output 'files/' --stats stderr
 ```
 You can specify flags for different types of sensitive data to redact (e.g., `--emails`, `--dates`).
 

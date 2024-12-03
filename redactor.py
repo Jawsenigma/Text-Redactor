@@ -1,5 +1,6 @@
 import os
 import argparse
+import glob
 import spacy
 from spacy.matcher import Matcher
 from spacy.cli import download
@@ -189,7 +190,7 @@ def write_stats(stats, stats_type):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Text Redaction Tool")
-    parser.add_argument('input_path', type=str, help="Path to input text file or directory")
+    parser.add_argument('--input', type=str, required=True, help="For input text files")
     parser.add_argument('--output', type=str, required=True, help="Directory to save redacted files")
     parser.add_argument('--stats', type=str, default="stdout", help="Output stats to file, stderr, or stdout")
     parser.add_argument('--dates', action='store_true', help="Redact dates")
@@ -215,21 +216,21 @@ def main():
     
     stats = {"files_processed": 0, "files_redacted": 0, "errors": 0}
 
-    if os.path.isdir(args.input_path):
-        files = [os.path.join(args.input_path, f) for f in os.listdir(args.input_path) if f.endswith('.txt')]
-    else:
-        files = [args.input_path]
-    
+    files = glob.glob(args.input, recursive=True)
+    if not files:
+        print("No matching files found for the input pattern.")
+        sys.exit(1)
+
     for file_path in files:
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 original_text = f.read()
             stats["files_processed"] += 1
         except Exception as e:
             print(f"Error reading file {file_path}: {e}")
             stats["errors"] += 1
             continue
-        
+
         redacted_text = redact_text(original_text, flags, args.concepts)
         output_path = os.path.join(args.output, os.path.basename(file_path).replace('.txt', '.censored'))
         write_output(redacted_text, output_path)
