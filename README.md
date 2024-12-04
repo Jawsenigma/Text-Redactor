@@ -10,7 +10,7 @@ The **Redactor** project is a Python package designed to redact sensitive inform
 
 - **Email Redaction**: Obfuscates email addresses.
 - **Date Redaction**: Redacts dates in multiple formats.
-- **Phone Number Redaction**: Removes phone numbers in various formats.
+- **Phone Number Redaction**: Redacts phone numbers in various formats.
 - **Name Redaction**: Detects and redacts personal names.
 - **Address Redaction**: Redacts physical addresses.
 - **Gendered Pronoun Redaction**: Obfuscates gender-specific terms.
@@ -33,15 +33,6 @@ The **Redactor** project is a Python package designed to redact sensitive inform
 
 You can use the individual redactor functions from `redactor.py` to redact specific types of information from text.
 
-### Example Usage:
-```python
-from redactor import email_redactor, date_redactor, phone_redactor
-
-text = "Contact me at example@example.com on January 1, 2022. My phone is 123-456-7890."
-redacted_text = phone_redactor(date_redactor(email_redactor(text)))
-print(redacted_text) 
-```
-
 ### Command-Line Usage:
 Given below is an example command to redact information from a text file via the command line:
 ```bash
@@ -56,7 +47,7 @@ You can specify flags for different types of sensitive data to redact (e.g., `--
 - `--genders`: Redact gender-specific terms.
 - `--names`: Redact personal names.
 - `--addresses`: Redact physical addresses.
-- `--concepts`: Provide a list of custom words or phrases to redact.
+- `--concepts`: Redacts any text related to the concept given eg: 'child', 'prison' etc.
 
 ## Functions Overview
 
