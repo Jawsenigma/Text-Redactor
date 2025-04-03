@@ -1,10 +1,10 @@
-# Redactor Project
+# Text-Redactor
 
 **Author**: Tanmay Saxena
 
 ## Project Description
 
-The **Redactor** project is a Python package designed to redact sensitive information from text. It provides functions to remove or obfuscate identifiable details such as emails, dates, phone numbers, names, addresses, gendered pronouns, and user-defined concepts. This tool is ideal for protecting personal data in documents and ensuring compliance with privacy standards.
+The **Text-Redactor** is a Python package designed to redact sensitive information from text. It provides functions to remove or obfuscate identifiable details such as emails, dates, phone numbers, names, addresses, gendered pronouns, and user-defined concepts. This tool is ideal for protecting personal data in documents and ensuring compliance with privacy standards.
 
 ## Features
 
