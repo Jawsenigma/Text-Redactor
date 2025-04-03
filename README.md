@@ -20,8 +20,8 @@ The **Text-Redactor** is a Python package designed to redact sensitive informati
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/Jawsenigma/cis6930fa24-project1.git
-    cd cis6930fa24-project1
+    git clone https://github.com/Jawsenigma/Text-Redactor.git
+    cd Text-Redactor
     ```
 
 2. Install dependencies using `pipenv`:
